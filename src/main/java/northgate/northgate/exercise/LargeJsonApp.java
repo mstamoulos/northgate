@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -12,14 +13,31 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
 public class LargeJsonApp {
+	static SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
 
 	public static void main(String[] args) {
 
-		JsonParser parser;
-		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+		LargeJsonApp largeJsonApp = new LargeJsonApp();
 		App app = new App();
-		List<Person> personList = new ArrayList<Person>();
+		//List<Person> personList = largeJsonApp.getPersonList(new AllPredicate());
+		List<Person> personList = largeJsonApp.getPersonList(new FirstNamePredicate("A"));
+		personList = app.removeDuplicate(personList);
 
+		try {
+			personList = app.filterDobBefore(personList, DATE_FORMAT.parse("1999-12-31"));
+		} catch (ParseException e) {
+			System.err.println(e.getMessage());
+		}
+
+		personList = app.sortAscending(personList);
+
+		app.printList(personList);
+
+	}
+
+	public List<Person> getPersonList(Predicate<Person> personPredicate) {
+		List<Person> personList = new ArrayList<Person>();
+		JsonParser parser;
 		try {
 			parser = new JsonFactory()
 					.createParser(App.class.getClassLoader().getResourceAsStream("person test data.json"));
@@ -31,13 +49,13 @@ public class LargeJsonApp {
 				String token = parser.getCurrentName();
 
 				if ("first_name".equals(token)) {
-					parser.nextToken(); 
-					fname = parser.getText(); 
+					parser.nextToken();
+					fname = parser.getText();
 
 				}
 				if ("last_name".equals(token)) {
-					parser.nextToken(); 
-					lastName = parser.getText(); 
+					parser.nextToken();
+					lastName = parser.getText();
 
 				}
 				if ("date_of_birth".equals(token)) {
@@ -46,34 +64,22 @@ public class LargeJsonApp {
 				}
 
 				if (JsonToken.END_OBJECT == parser.getCurrentToken()) {
+					Person p = Person.builder().firstName(fname).lastName(lastName)
+							.dateOfBirth(DATE_FORMAT.parse(dob)).build();
+					if(personPredicate.test(p)) {
+						personList.add(p);
 
-					personList.add(
-							Person.builder().firstName(fname).lastName(lastName).dateOfBirth(df.parse(dob)).build());
+					}
 
 				}
 
 			}
 			parser.close();
-			
-			personList = app.removeDuplicate(personList);
-			
-			personList = app.filterDobBefore(personList, df.parse("1999-12-31"));
-			
-			personList = app.sortAscending(personList);
-			
-			app.printList(personList);
-
-		} catch (JsonParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-
-		} catch (ParseException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return personList;
+		} catch (IOException | ParseException e) {
+			System.err.println(e.getMessage());
 		}
+		return personList;
 
 	}
 }
