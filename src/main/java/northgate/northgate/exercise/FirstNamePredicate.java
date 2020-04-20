@@ -11,7 +11,7 @@ public class FirstNamePredicate implements Predicate<Person> {
 	@Override
 	public boolean test(Person t) {
 		
-		return t.getFirstName().startsWith(this.startingChar);
+		return t.getFirstName().toLowerCase().startsWith(this.startingChar.toLowerCase());
 	}
 
 }
